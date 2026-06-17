@@ -1,0 +1,58 @@
+services:
+    mysql:
+        image: 'mysql:8.4'
+        container_name: devstack-mysql
+        restart: unless-stopped
+        ports:
+            - '${FORWARD_DB_PORT:-3306}:3306'
+        environment:
+            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_ROOT_HOST: '%'
+            MYSQL_DATABASE: '${DB_DATABASE:-app}'
+            MYSQL_USER: '${DB_USERNAME:-sail}'
+            MYSQL_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_ALLOW_EMPTY_PASSWORD: 1
+        volumes:
+            - 'devstack-mysql:/var/lib/mysql'
+            - './mysql/init:/docker-entrypoint-initdb.d'
+        networks:
+            - devstack
+        healthcheck:
+            test:
+                - CMD
+                - mysqladmin
+                - ping
+                - '-p${DB_PASSWORD}'
+            retries: 3
+            timeout: 5s
+
+    mailpit:
+        image: 'axllent/mailpit:latest'
+        container_name: devstack-mailpit
+        restart: unless-stopped
+        ports:
+            - '${FORWARD_MAILPIT_PORT:-1025}:1025'
+            - '${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025'
+        networks:
+            - devstack
+
+    adminer:
+        image: adminer
+        container_name: devstack-adminer
+        restart: unless-stopped
+        ports:
+            - '${FORWARD_ADMINER_PORT:-8080}:8080'
+        environment:
+            ADMINER_DEFAULT_SERVER: mysql
+        networks:
+            - devstack
+        depends_on:
+            - mysql
+
+networks:
+    devstack:
+        driver: bridge
+
+volumes:
+    devstack-mysql:
+        driver: local
